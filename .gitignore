@@ -1,0 +1,4 @@
+# per-user settings written by Obsidian
+data.json
+node_modules/
+.DS_Store
