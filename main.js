@@ -4,7 +4,7 @@
  * The editor is Obsidian's own embedded markdown editor (same trick Kanban uses).
  */
 const { Plugin, ItemView, TFile, Notice, normalizePath, moment, Platform,
-  PluginSettingTab, Setting, MarkdownRenderer, setIcon } = require("obsidian");
+  PluginSettingTab, Setting, MarkdownRenderer, setIcon, Modal } = require("obsidian");
 
 const VIEW_TYPE = "day-peek";
 const DEFAULTS = { openLocation: "auto", gridMode: "month", lastShown: "month", openOnStartup: "mobile", hideWhileTyping: "mobile" };
@@ -354,9 +354,89 @@ module.exports = class DayPeekPlugin extends Plugin {
     this.addCommand({ id: "open", name: "Open", callback: () => this.open() });
     this.addCommand({ id: "open-tab", name: "Open in a tab", callback: () => this.open("tab") });
     this.addCommand({ id: "open-sidebar", name: "Open in the right sidebar", callback: () => this.open("sidebar") });
+    this.addCommand({ id: "check-status-bar", name: "Check status bar support (Android)", callback: () => this.checkStatusBar() });
     this.addSettingTab(new DayPeekSettings(this.app, this));
     // Make sure the pane exists after Obsidian starts (phones lose sidebar tabs easily).
     this.app.workspace.onLayoutReady(() => this.autoOpen());
+  }
+
+  // ---- Status bar check (0.5.1): can a plugin hide Android's system status bar? ----
+  // Probes every known route, tries a 4-second hide, asks Devan if it worked,
+  // and writes the result to a note so Big Len can read it over Syncthing.
+  async checkStatusBar() {
+    const lines = [];
+    const log = (s) => lines.push(s);
+    const cap = window.Capacitor;
+    log(`platform: isMobile=${Platform.isMobile} isAndroidApp=${Platform.isAndroidApp} isPhone=${Platform.isPhone}`);
+    log(`window.Capacitor: ${cap ? "yes" : "no"}`);
+    let routes = [];
+    if (cap) {
+      try { log(`Capacitor.getPlatform(): ${cap.getPlatform && cap.getPlatform()}`); } catch (e) { log("getPlatform error: " + e.message); }
+      const names = ["StatusBar", "SystemBars", "NavigationBar", "App", "Device", "Keyboard", "Haptics", "ScreenOrientation", "SplashScreen"];
+      for (const n of names) {
+        let avail = "?";
+        try { avail = cap.isPluginAvailable ? String(cap.isPluginAvailable(n)) : "no isPluginAvailable"; } catch (e) { avail = "error " + e.message; }
+        log(`  plugin ${n}: ${avail}`);
+      }
+      try { log(`  Plugins keys: ${Object.keys(cap.Plugins || {}).join(", ") || "(none listed)"}`); } catch (e) { log("  Plugins keys error: " + e.message); }
+      const P = cap.Plugins || {};
+      if (P.StatusBar && cap.isPluginAvailable && cap.isPluginAvailable("StatusBar")) {
+        routes.push({ name: "Capacitor StatusBar", hide: () => P.StatusBar.hide({ animation: "FADE" }), show: () => P.StatusBar.show({ animation: "FADE" }),
+          info: async () => JSON.stringify(await P.StatusBar.getInfo()) });
+      }
+      if (P.SystemBars && cap.isPluginAvailable && cap.isPluginAvailable("SystemBars")) {
+        routes.push({ name: "Capacitor SystemBars", hide: () => P.SystemBars.hide({ bar: "StatusBar" }), show: () => P.SystemBars.show({ bar: "StatusBar" }) });
+      }
+    }
+    if (window.StatusBar && typeof window.StatusBar.hide === "function") {
+      routes.push({ name: "Cordova window.StatusBar", hide: () => window.StatusBar.hide(), show: () => window.StatusBar.show() });
+    }
+    if (window.AndroidFullScreen && window.AndroidFullScreen.immersiveMode) {
+      routes.push({ name: "Cordova AndroidFullScreen", hide: () => new Promise((ok, no) => window.AndroidFullScreen.immersiveMode(ok, no)),
+        show: () => new Promise((ok, no) => window.AndroidFullScreen.showSystemUI(ok, no)) });
+    }
+    log(`routes found: ${routes.map((r) => r.name).join(", ") || "none"}`);
+
+    const results = [];
+    for (const r of routes) {
+      let res = "";
+      try { if (r.info) log(`  ${r.name} getInfo: ${await r.info()}`); } catch (e) { log(`  ${r.name} getInfo error: ${e.message}`); }
+      try {
+        new Notice(`Day Peek: hiding the status bar for 4 s (${r.name})…`, 4000);
+        await r.hide();
+        await new Promise((ok) => setTimeout(ok, 4000));
+        await r.show();
+        res = "called hide/show without errors";
+      } catch (e) { res = "error: " + (e && e.message || e); }
+      log(`  ${r.name}: ${res}`);
+      const answer = routes.length && !res.startsWith("error") ? await this.askYesNo(`Did Android's status bar (clock, battery) disappear for a few seconds? (${r.name})`) : "n/a";
+      results.push(`${r.name}: ${res}; Devan saw it hide: ${answer}`);
+    }
+    const verdict = results.some((s) => s.endsWith("yes")) ? "✅ WORKS" : routes.length ? "❌ routes exist but the bar didn't hide" : "❌ no route available";
+    const stamp = moment().format("YYYY-MM-DD HH:mm");
+    const body = `---\ntype: test-result\nplugin: Day Peek ${this.manifest.version}\n---\n# Status bar check: ${verdict}\n\nRun ${stamp} on ${Platform.isMobile ? "mobile" : "desktop"}.\n\n## Results\n${results.map((s) => "- " + s).join("\n") || "- (no routes to test)"}\n\n## Raw\n\`\`\`\n${lines.join("\n")}\n\`\`\`\n`;
+    const dir = "7. Agents/7.6 projects/Day Peak";
+    const path = normalizePath(`${dir}/Status bar check ${moment().format("YYYY-MM-DD HHmm")}${Platform.isMobile ? " (phone)" : ""}.md`);
+    try {
+      if (!this.app.vault.getAbstractFileByPath(dir)) await this.app.vault.createFolder(dir);
+      await this.app.vault.create(path, body);
+      new Notice(`Day Peek: ${verdict}. Saved to ${path}`, 8000);
+    } catch (e) { new Notice("Day Peek: couldn't save the result: " + e.message, 8000); }
+  }
+
+  askYesNo(question) {
+    return new Promise((resolve) => {
+      const m = new Modal(this.app);
+      let done = false;
+      m.titleEl.setText("Day Peek: status bar check");
+      m.contentEl.createEl("p", { text: question });
+      const row = m.contentEl.createDiv({ cls: "modal-button-container" });
+      const pick = (v) => { if (!done) { done = true; resolve(v); m.close(); } };
+      row.createEl("button", { text: "Yes, it hid", cls: "mod-cta" }).onclick = () => pick("yes");
+      row.createEl("button", { text: "No" }).onclick = () => pick("no");
+      m.onClose = () => pick("no answer");
+      m.open();
+    });
   }
 
   async autoOpen() {
