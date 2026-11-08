@@ -7,7 +7,7 @@ const { Plugin, ItemView, TFile, Notice, normalizePath, moment, Platform,
   PluginSettingTab, Setting, MarkdownRenderer, setIcon, Modal } = require("obsidian");
 
 const VIEW_TYPE = "day-peek";
-const DEFAULTS = { openLocation: "auto", gridMode: "month", lastShown: "month", openOnStartup: "mobile", hideWhileTyping: "mobile" };
+const DEFAULTS = { openLocation: "auto", gridMode: "month", lastShown: "month", openOnStartup: "mobile", hideWhileTyping: "mobile", hideStatusBar: false };
 const MODES = ["month", "week", "none"];   // what sits under the header: month grid, one-week strip, nothing
 
 // ---------- daily-note helpers ----------
@@ -356,8 +356,35 @@ module.exports = class DayPeekPlugin extends Plugin {
     this.addCommand({ id: "open-sidebar", name: "Open in the right sidebar", callback: () => this.open("sidebar") });
     this.addCommand({ id: "check-status-bar", name: "Check status bar support (Android)", callback: () => this.checkStatusBar() });
     this.addSettingTab(new DayPeekSettings(this.app, this));
+    // 0.6.0: hide Android's status bar while Day Peek is the active tab (opt-in).
+    this.registerEvent(this.app.workspace.on("active-leaf-change", () => this.updateStatusBar()));
+    this.registerDomEvent(document, "visibilitychange", () => { if (!document.hidden) this.updateStatusBar(); });
     // Make sure the pane exists after Obsidian starts (phones lose sidebar tabs easily).
-    this.app.workspace.onLayoutReady(() => this.autoOpen());
+    this.app.workspace.onLayoutReady(async () => { await this.autoOpen(); this.updateStatusBar(); });
+  }
+
+  onunload() { this.setStatusBar(true); }   // never leave the bar hidden after disabling the plugin
+
+  // ---- Android status bar (0.6.0) ----
+  statusBarApi() {
+    const cap = window.Capacitor;
+    if (!Platform.isAndroidApp || !cap || !cap.isPluginAvailable || !cap.isPluginAvailable("StatusBar")) return null;
+    return cap.Plugins && cap.Plugins.StatusBar;
+  }
+
+  updateStatusBar() {
+    const active = !!this.app.workspace.getActiveViewOfType(DayPeekView);
+    this.setStatusBar(!(this.settings.hideStatusBar && active));
+  }
+
+  setStatusBar(visible) {
+    const sb = this.statusBarApi();
+    if (!sb) return;
+    if (visible && !this.statusBarTouched) return;   // we never hid it, so leave it alone
+    if (!visible) this.statusBarTouched = true;
+    // Called every time (not cached): Android shows the bar again on a swipe from the top,
+    // so coming back to Day Peek or reopening the app hides it again.
+    (visible ? sb.show({ animation: "FADE" }) : sb.hide({ animation: "FADE" })).catch(() => {});
   }
 
   // ---- Status bar check (0.5.1): can a plugin hide Android's system status bar? ----
@@ -505,6 +532,12 @@ class DayPeekSettings extends PluginSettingTab {
         .addOptions({ mobile: "On phones/tablets only", always: "Always", never: "Never" })
         .setValue(this.plugin.settings.hideWhileTyping)
         .onChange(async (v) => { this.plugin.settings.hideWhileTyping = v; await this.plugin.saveSettings(); }));
+    new Setting(el)
+      .setName("Hide Android's status bar")
+      .setDesc("Android only: the clock/battery bar disappears while Day Peek is the open tab and comes back when you switch tabs. Swipe down from the top to see it meanwhile. Does nothing on laptops.")
+      .addToggle((t) => t
+        .setValue(this.plugin.settings.hideStatusBar)
+        .onChange(async (v) => { this.plugin.settings.hideStatusBar = v; await this.plugin.saveSettings(); this.plugin.updateStatusBar(); }));
     new Setting(el)
       .setName("Open at startup")
       .setDesc("Put Day Peek back in place every time Obsidian starts, so it can't go missing.")

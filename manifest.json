@@ -1,7 +1,7 @@
 {
   "id": "day-peek",
   "name": "Day Peek",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "minAppVersion": "1.5.0",
   "description": "A mini calendar with the selected day's daily note below it, editable in place.",
   "author": "Big Len",
