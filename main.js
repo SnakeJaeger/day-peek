@@ -7,7 +7,7 @@ const { Plugin, ItemView, TFile, Notice, normalizePath, moment, Platform,
   PluginSettingTab, Setting, MarkdownRenderer, setIcon, Modal } = require("obsidian");
 
 const VIEW_TYPE = "day-peek";
-const DEFAULTS = { openLocation: "auto", gridMode: "month", lastShown: "month", openOnStartup: "mobile", hideWhileTyping: "mobile", hideStatusBar: false };
+const DEFAULTS = { openLocation: "auto", gridMode: "month", lastShown: "month", openOnStartup: "mobile", hideWhileTyping: "mobile", hideStatusBar: false, sidebarWidth: "", sidebarMaxWidth: "" };
 const MODES = ["month", "week", "none"];   // what sits under the header: month grid, one-week strip, nothing
 
 // ---------- daily-note helpers ----------
@@ -338,6 +338,55 @@ class DayPeekView extends ItemView {
 }
 
 // ---------- plugin ----------
+// ---- Shared with Fold Magic: one keeper of Android's status bar for all Tailnet 4 plugins ----
+// Each plugin says what it wants ("hidden" or not); the bar is hidden if anyone wants it hidden,
+// unless the user toggled it by hand. A hand toggle lasts until something changes (a plugin's
+// wish changes, or the phone is folded/unfolded). Same code in both plugins; newest version wins.
+function statusBarHub() {
+  const VERSION = 1;
+  let hub = window.__tailnet4StatusBar;
+  if (hub && hub.version >= VERSION) return hub;
+  const old = hub || {};
+  hub = {
+    version: VERSION,
+    owners: old.owners || new Set(),
+    wants: old.wants || new Map(),
+    manual: old.manual === undefined ? null : old.manual,   // null = automatic, true/false = toggled by hand
+    touched: !!old.touched,                                 // did one of us ever hide it?
+    api() {
+      const cap = window.Capacitor;
+      if (cap && cap.isPluginAvailable && cap.getPlatform && cap.getPlatform() === "android" && cap.isPluginAvailable("StatusBar")) return cap.Plugins.StatusBar;
+      return window.__tailnet4FakeStatusBar || null;      // only set by tests
+    },
+    join(owner) { this.owners.add(owner); },
+    leave(owner) {
+      this.owners.delete(owner); this.wants.delete(owner);
+      if (!this.owners.size) this.manual = null;            // last plugin gone: back to stock
+      this.apply();
+    },
+    want(owner, hidden) {
+      const before = this.wants.has(owner);
+      if (hidden) this.wants.set(owner, true); else this.wants.delete(owner);
+      if (before !== !!hidden) this.manual = null;          // something changed: back to automatic
+      this.apply();
+    },
+    hidden() { return this.manual !== null ? this.manual : this.wants.size > 0; },
+    toggle() { this.manual = !this.hidden(); this.apply(); return this.manual; },
+    automatic() { this.manual = null; this.apply(); },
+    apply() {
+      const sb = this.api();
+      if (!sb) return;
+      const h = this.hidden();
+      if (!h && !this.touched) return;                      // never hid it: leave it alone
+      if (h) this.touched = true;
+      // Not cached on purpose: Android shows the bar again on a swipe, so re-applying is the point.
+      Promise.resolve(h ? sb.hide({ animation: "FADE" }) : sb.show({ animation: "FADE" })).catch(() => {});
+    },
+  };
+  window.__tailnet4StatusBar = hub;
+  return hub;
+}
+
 module.exports = class DayPeekPlugin extends Plugin {
   async onload() {
     this.settings = Object.assign({}, DEFAULTS, await this.loadData());
@@ -357,34 +406,50 @@ module.exports = class DayPeekPlugin extends Plugin {
     this.addCommand({ id: "check-status-bar", name: "Check status bar support (Android)", callback: () => this.checkStatusBar() });
     this.addSettingTab(new DayPeekSettings(this.app, this));
     // 0.6.0: hide Android's status bar while Day Peek is the active tab (opt-in).
+    this.hub = statusBarHub();
+    this.hub.join("day-peek");
     this.registerEvent(this.app.workspace.on("active-leaf-change", () => this.updateStatusBar()));
-    this.registerDomEvent(document, "visibilitychange", () => { if (!document.hidden) this.updateStatusBar(); });
+    this.registerDomEvent(document, "visibilitychange", () => { if (!document.hidden) this.hub.apply(); });
+    // 0.7.0: sidebar width on phones/tablets (Fold Magic's width settings win when it's on)
+    this.registerDomEvent(window, "resize", () => this.applyWidth());
     // Make sure the pane exists after Obsidian starts (phones lose sidebar tabs easily).
-    this.app.workspace.onLayoutReady(async () => { await this.autoOpen(); this.updateStatusBar(); });
+    this.app.workspace.onLayoutReady(async () => { await this.autoOpen(); this.updateStatusBar(); this.applyWidth(); });
   }
 
-  onunload() { this.setStatusBar(true); }   // never leave the bar hidden after disabling the plugin
-
-  // ---- Android status bar (0.6.0) ----
-  statusBarApi() {
-    const cap = window.Capacitor;
-    if (!Platform.isAndroidApp || !cap || !cap.isPluginAvailable || !cap.isPluginAvailable("StatusBar")) return null;
-    return cap.Plugins && cap.Plugins.StatusBar;
+  onunload() {
+    this.hub.leave("day-peek");   // shows the bar again unless Fold Magic still wants it hidden
+    this.clearWidth();
   }
 
+  // ---- Android status bar (0.6.0; shared keeper since 0.7.0) ----
   updateStatusBar() {
     const active = !!this.app.workspace.getActiveViewOfType(DayPeekView);
-    this.setStatusBar(!(this.settings.hideStatusBar && active));
+    this.hub.want("day-peek", this.settings.hideStatusBar && active);
   }
 
-  setStatusBar(visible) {
-    const sb = this.statusBarApi();
-    if (!sb) return;
-    if (visible && !this.statusBarTouched) return;   // we never hid it, so leave it alone
-    if (!visible) this.statusBarTouched = true;
-    // Called every time (not cached): Android shows the bar again on a swipe from the top,
-    // so coming back to Day Peek or reopening the app hides it again.
-    (visible ? sb.show({ animation: "FADE" }) : sb.hide({ animation: "FADE" })).catch(() => {});
+  // ---- Sidebar width (0.7.0) ----
+  foldMagicOn() { return !!(this.app.plugins && this.app.plugins.plugins && this.app.plugins.plugins["fold-magic"]); }   // loaded = on
+
+  applyWidth() {
+    if (!(Platform.isMobileApp || window.__foldMagicTest)) return;
+    if (this.foldMagicOn()) { this.widthSet = false; return; }   // Fold Magic owns the widths
+    const pairs = [["--mobile-sidebar-width", this.settings.sidebarWidth, "width"], ["--mobile-sidebar-max-width", this.settings.sidebarMaxWidth, "max-width"]];
+    let any = false;
+    for (const [v, x, prop] of pairs) {
+      const val = (x || "").trim();
+      let ok = false;
+      try { ok = !!val && CSS.supports(prop, val); } catch (e) { ok = false; }
+      if (ok) { document.body.style.setProperty(v, val); any = true; }
+      else if (this.widthSet) document.body.style.removeProperty(v);
+    }
+    this.widthSet = any;
+  }
+
+  clearWidth() {
+    if (!this.widthSet || this.foldMagicOn()) return;
+    document.body.style.removeProperty("--mobile-sidebar-width");
+    document.body.style.removeProperty("--mobile-sidebar-max-width");
+    this.widthSet = false;
   }
 
   // ---- Status bar check (0.5.1): can a plugin hide Android's system status bar? ----
@@ -439,6 +504,7 @@ module.exports = class DayPeekPlugin extends Plugin {
       const answer = routes.length && !res.startsWith("error") ? await this.askYesNo(`Did Android's status bar (clock, battery) disappear for a few seconds? (${r.name})`) : "n/a";
       results.push(`${r.name}: ${res}; Devan saw it hide: ${answer}`);
     }
+    this.hub.apply();   // 0.7.0: put the bar back to what Day Peek / Fold Magic want (0.6.0 left it shown)
     const verdict = results.some((s) => s.endsWith("yes")) ? "✅ WORKS" : routes.length ? "❌ routes exist but the bar didn't hide" : "❌ no route available";
     const stamp = moment().format("YYYY-MM-DD HH:mm");
     const body = `---\ntype: test-result\nplugin: Day Peek ${this.manifest.version}\n---\n# Status bar check: ${verdict}\n\nRun ${stamp} on ${Platform.isMobile ? "mobile" : "desktop"}.\n\n## Results\n${results.map((s) => "- " + s).join("\n") || "- (no routes to test)"}\n\n## Raw\n\`\`\`\n${lines.join("\n")}\n\`\`\`\n`;
@@ -538,6 +604,21 @@ class DayPeekSettings extends PluginSettingTab {
       .addToggle((t) => t
         .setValue(this.plugin.settings.hideStatusBar)
         .onChange(async (v) => { this.plugin.settings.hideStatusBar = v; await this.plugin.saveSettings(); this.plugin.updateStatusBar(); }));
+    const widthSetting = (key, name, stock, prop) => new Setting(el)
+      .setName(name)
+      .setDesc(`Phones/tablets only. Any CSS length (70vw, 500px${prop === "max-width" ? ", none" : ""}); empty = Obsidian's default (${stock}). If Fold Magic is on, its folded/unfolded widths are used instead.`)
+      .addText((t) => {
+        t.setPlaceholder(stock).setValue(this.plugin.settings[key]);
+        t.inputEl.addEventListener("change", async () => {
+          const v = t.getValue().trim();
+          let ok = !v;
+          try { ok = ok || CSS.supports(prop, v); } catch (e) { ok = false; }
+          if (!ok) { new Notice(`Day Peek: “${v}” isn't a CSS length (try 70vw or 500px)`, 4000); return; }
+          this.plugin.settings[key] = v; await this.plugin.saveSettings(); this.plugin.applyWidth();
+        });
+      });
+    widthSetting("sidebarWidth", "Sidebar width", "84vw", "width");
+    widthSetting("sidebarMaxWidth", "Sidebar maximum width", "450px", "max-width");
     new Setting(el)
       .setName("Open at startup")
       .setDesc("Put Day Peek back in place every time Obsidian starts, so it can't go missing.")
