@@ -38,3 +38,7 @@ No build step: `main.js` is plain JavaScript.
 ## Credits
 
 Made by **Tailnet 4**.
+
+## License
+
+[MIT](LICENSE) © 2026 Tailnet 4
