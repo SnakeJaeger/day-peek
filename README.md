@@ -12,6 +12,14 @@ An Obsidian plugin: a mini calendar with the selected day's **daily note right b
 
 Uses the core **Daily notes** plugin's settings (folder, date format, template).
 
+## Screenshots
+
+Day Peek in the right sidebar on a Galaxy Z Fold 7 (unfolded):
+
+| Month view | Week strip | Editing with the keyboard up |
+|---|---|---|
+| ![Month view](https://raw.githubusercontent.com/SnakeJaeger/day-peek/main/screenshots/1-month-view.jpg) | ![Week strip](https://raw.githubusercontent.com/SnakeJaeger/day-peek/main/screenshots/2-week-strip.jpg) | ![Editing with the keyboard up](https://raw.githubusercontent.com/SnakeJaeger/day-peek/main/screenshots/3-editing.jpg) |
+
 ## Install
 
 **With BRAT:** add the beta plugin `SnakeJaeger/day-peek`.
