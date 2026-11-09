@@ -26,9 +26,14 @@ Uses the core **Daily notes** plugin's settings (folder, date format, template).
 | Calendar under the header | Month, one-week strip, hidden |
 | Hide the calendar while typing | Phones/tablets only, always, never |
 | Open at startup | Phones/tablets only, always, never |
+| Hide Android's status bar | On / off (Android app only: hides the system clock/battery bar while Day Peek is the active pane) |
 
 ## Good to know
 
 The editable note uses Obsidian's internal embed editor (`app.embedRegistry`), the same approach the Kanban plugin uses. It isn't a public API, so if an Obsidian update changes it, Day Peek falls back to a read-only preview with a warning instead of breaking.
 
 No build step: `main.js` is plain JavaScript.
+
+## Credits
+
+Made by **Tailnet 4**.

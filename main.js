@@ -1,5 +1,5 @@
 /* Day Peek — mini calendar + the selected day's daily note, editable in place.
- * Written by Big Len (Claude) in 2026. Plain JS, no build step.
+ * Made by Tailnet 4 in 2026 (written by Big Len, the team's Claude Code). Plain JS, no build step.
  * Uses the core Daily notes settings (folder, format, template).
  * The editor is Obsidian's own embedded markdown editor (same trick Kanban uses).
  */
