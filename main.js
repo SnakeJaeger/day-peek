@@ -453,7 +453,7 @@ module.exports = class DayPeekPlugin extends Plugin {
   }
 
   // ---- Status bar check (0.5.1): can a plugin hide Android's system status bar? ----
-  // Probes every known route, tries a 4-second hide, asks Devan if it worked,
+  // Probes every known route, tries a 4-second hide, asks the user if it worked,
   // and writes the result to a note so Big Len can read it over Syncthing.
   async checkStatusBar() {
     const lines = [];
@@ -502,7 +502,7 @@ module.exports = class DayPeekPlugin extends Plugin {
       } catch (e) { res = "error: " + (e && e.message || e); }
       log(`  ${r.name}: ${res}`);
       const answer = routes.length && !res.startsWith("error") ? await this.askYesNo(`Did Android's status bar (clock, battery) disappear for a few seconds? (${r.name})`) : "n/a";
-      results.push(`${r.name}: ${res}; Devan saw it hide: ${answer}`);
+      results.push(`${r.name}: ${res}; seen hiding: ${answer}`);
     }
     this.hub.apply();   // 0.7.0: put the bar back to what Day Peek / Fold Magic want (0.6.0 left it shown)
     const verdict = results.some((s) => s.endsWith("yes")) ? "✅ WORKS" : routes.length ? "❌ routes exist but the bar didn't hide" : "❌ no route available";
