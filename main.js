@@ -409,22 +409,53 @@ module.exports = class DayPeekPlugin extends Plugin {
     this.hub = statusBarHub();
     this.hub.join("day-peek");
     this.registerEvent(this.app.workspace.on("active-leaf-change", () => this.updateStatusBar()));
+    // 0.7.1: react to the drawer itself opening/closing, not only to focus (that caused the blink).
+    this.registerEvent(this.app.workspace.on("layout-change", () => this.updateStatusBar()));
+    this.registerDomEvent(window, "resize", () => this.updateStatusBar());
     this.registerDomEvent(document, "visibilitychange", () => { if (!document.hidden) this.hub.apply(); });
     // 0.7.0: sidebar width on phones/tablets (Fold Magic's width settings win when it's on)
     this.registerDomEvent(window, "resize", () => this.applyWidth());
     // Make sure the pane exists after Obsidian starts (phones lose sidebar tabs easily).
-    this.app.workspace.onLayoutReady(async () => { await this.autoOpen(); this.updateStatusBar(); this.applyWidth(); });
+    this.app.workspace.onLayoutReady(async () => { await this.autoOpen(); this.watchDrawers(); this.updateStatusBar(); this.applyWidth(); });
   }
 
   onunload() {
+    window.clearTimeout(this.sbTimer);
+    if (this.drawerObserver) this.drawerObserver.disconnect();
     this.hub.leave("day-peek");   // shows the bar again unless Fold Magic still wants it hidden
     this.clearWidth();
   }
 
   // ---- Android status bar (0.6.0; shared keeper since 0.7.0) ----
+  // 0.7.1: "Day Peek is open" = its view is actually on screen (open drawer or visible tab),
+  // focused or not. Decided 300 ms after things stop changing, so a quick tap-and-close never flashes the bar.
   updateStatusBar() {
-    const active = !!this.app.workspace.getActiveViewOfType(DayPeekView);
-    this.hub.want("day-peek", this.settings.hideStatusBar && active);
+    window.clearTimeout(this.sbTimer);
+    this.sbTimer = window.setTimeout(() => this.hub.want("day-peek", !!this.settings.hideStatusBar && this.onScreen()), 300);
+  }
+
+  onScreen() {
+    const ws = this.app.workspace;
+    return ws.getLeavesOfType(VIEW_TYPE).some((leaf) => {
+      // In a sidebar: closed the moment you close it, even while it's still sliding away.
+      const root = leaf.getRoot && leaf.getRoot();
+      if ((root === ws.leftSplit || root === ws.rightSplit) && root.collapsed) return false;
+      const el = leaf.view && leaf.view.containerEl;
+      if (!el || !el.isShown()) return false;              // closed drawer / background tab = display: none
+      const r = el.getBoundingClientRect();
+      return r.width > 0 && r.height > 0 && r.right > 1 && r.left < window.innerWidth - 1;   // not slid off screen
+    });
+  }
+
+  // The phone's sidebars open and close by changing their own style/class, often without any
+  // workspace event, so watch the two drawers directly.
+  watchDrawers() {
+    if (this.drawerObserver) this.drawerObserver.disconnect();
+    this.drawerObserver = new MutationObserver(() => this.updateStatusBar());
+    for (const split of [this.app.workspace.leftSplit, this.app.workspace.rightSplit]) {
+      const el = split && split.containerEl;
+      if (el) this.drawerObserver.observe(el, { attributes: true, attributeFilter: ["style", "class"] });
+    }
   }
 
   // ---- Sidebar width (0.7.0) ----
@@ -600,7 +631,7 @@ class DayPeekSettings extends PluginSettingTab {
         .onChange(async (v) => { this.plugin.settings.hideWhileTyping = v; await this.plugin.saveSettings(); }));
     new Setting(el)
       .setName("Hide Android's status bar")
-      .setDesc("Android only: the clock/battery bar disappears while Day Peek is the open tab and comes back when you switch tabs. Swipe down from the top to see it meanwhile. Does nothing on laptops.")
+      .setDesc("Android only: the clock/battery bar disappears while Day Peek is on screen (its sidebar is open, or it's the visible tab) and comes back when it isn't. Swipe down from the top to see it meanwhile. Does nothing on laptops.")
       .addToggle((t) => t
         .setValue(this.plugin.settings.hideStatusBar)
         .onChange(async (v) => { this.plugin.settings.hideStatusBar = v; await this.plugin.saveSettings(); this.plugin.updateStatusBar(); }));
