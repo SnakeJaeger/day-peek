@@ -485,7 +485,7 @@ module.exports = class DayPeekPlugin extends Plugin {
 
   // ---- Status bar check (0.5.1): can a plugin hide Android's system status bar? ----
   // Probes every known route, tries a 4-second hide, asks the user if it worked,
-  // and writes the result to a note so Big Len can read it over Syncthing.
+  // and writes the result to a note in the vault (handy for bug reports).
   async checkStatusBar() {
     const lines = [];
     const log = (s) => lines.push(s);
@@ -539,10 +539,8 @@ module.exports = class DayPeekPlugin extends Plugin {
     const verdict = results.some((s) => s.endsWith("yes")) ? "✅ WORKS" : routes.length ? "❌ routes exist but the bar didn't hide" : "❌ no route available";
     const stamp = moment().format("YYYY-MM-DD HH:mm");
     const body = `---\ntype: test-result\nplugin: Day Peek ${this.manifest.version}\n---\n# Status bar check: ${verdict}\n\nRun ${stamp} on ${Platform.isMobile ? "mobile" : "desktop"}.\n\n## Results\n${results.map((s) => "- " + s).join("\n") || "- (no routes to test)"}\n\n## Raw\n\`\`\`\n${lines.join("\n")}\n\`\`\`\n`;
-    const dir = "7. Agents/7.6 projects/Day Peak";
-    const path = normalizePath(`${dir}/Status bar check ${moment().format("YYYY-MM-DD HHmm")}${Platform.isMobile ? " (phone)" : ""}.md`);
+    const path = normalizePath(`Day Peek status bar check ${moment().format("YYYY-MM-DD HHmm")}${Platform.isMobile ? " (phone)" : ""}.md`);
     try {
-      if (!this.app.vault.getAbstractFileByPath(dir)) await this.app.vault.createFolder(dir);
       await this.app.vault.create(path, body);
       new Notice(`Day Peek: ${verdict}. Saved to ${path}`, 8000);
     } catch (e) { new Notice("Day Peek: couldn't save the result: " + e.message, 8000); }
