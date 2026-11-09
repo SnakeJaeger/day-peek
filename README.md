@@ -26,7 +26,8 @@ Uses the core **Daily notes** plugin's settings (folder, date format, template).
 | Calendar under the header | Month, one-week strip, hidden |
 | Hide the calendar while typing | Phones/tablets only, always, never |
 | Open at startup | Phones/tablets only, always, never |
-| Hide Android's status bar | On / off (Android app only: hides the system clock/battery bar while Day Peek is the active pane) |
+| Hide Android's status bar | On / off (Android app only: hides the system clock/battery bar while Day Peek is on screen, e.g. its sidebar is open) |
+| Sidebar width / maximum width | Phones/tablets: any CSS length (`70vw`, `500px`, `none`); empty = Obsidian's default. With [Fold Magic](https://github.com/SnakeJaeger/fold-magic) on, its folded/unfolded widths are used instead |
 
 ## Good to know
 
