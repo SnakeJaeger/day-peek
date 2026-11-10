@@ -20,6 +20,10 @@ Day Peek in the right sidebar on a Galaxy Z Fold 7 (unfolded):
 |---|---|---|
 | ![Month view](https://raw.githubusercontent.com/SnakeJaeger/day-peek/main/screenshots/1-month-view.jpg) | ![Week strip](https://raw.githubusercontent.com/SnakeJaeger/day-peek/main/screenshots/2-week-strip.jpg) | ![Editing with the keyboard up](https://raw.githubusercontent.com/SnakeJaeger/day-peek/main/screenshots/3-editing.jpg) |
 
+| Calendar hidden (most room for the note) | Settings |
+|---|---|
+| ![Calendar hidden](https://raw.githubusercontent.com/SnakeJaeger/day-peek/main/screenshots/4-calendar-hidden.jpg) | ![Settings](https://raw.githubusercontent.com/SnakeJaeger/day-peek/main/screenshots/5-settings.jpg) |
+
 ## Install
 
 **With BRAT:** add the beta plugin `SnakeJaeger/day-peek`.
