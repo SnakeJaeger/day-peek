@@ -7,7 +7,7 @@ const { Plugin, ItemView, TFile, Notice, normalizePath, moment, Platform,
   PluginSettingTab, Setting, MarkdownRenderer, setIcon, Modal } = require("obsidian");
 
 const VIEW_TYPE = "day-peek";
-const DEFAULTS = { openLocation: "auto", gridMode: "month", lastShown: "month", openOnStartup: "mobile", hideWhileTyping: "mobile", foldStyle: "slide", hideStatusBar: false, sidebarWidth: "", sidebarMaxWidth: "" };
+const DEFAULTS = { openLocation: "auto", gridMode: "month", lastShown: "month", openOnStartup: "mobile", hideWhileTyping: "mobile", foldStyle: "slide", density: "normal", todayRing: true, hidePicker: false, hideStatusBar: false, sidebarWidth: "", sidebarMaxWidth: "" };
 const MODES = ["month", "week", "none"];   // what sits under the header: month grid, one-week strip, nothing
 
 // ---------- daily-note helpers ----------
@@ -70,6 +70,7 @@ async function createNote(app, m) {
 //            weekday names → the names slide under the header); scrolling back unfolds it.
 // Nothing in the header or calendar takes focus, so the phone keyboard stays up.
 const FOLDS = ["slide", "cascade", "off"];
+const DENSITIES = ["normal", "compact", "dense", "densest"];
 
 function triangleBtn(parent, up, label) {
   const b = parent.createEl("button", { cls: "dp-tri", attr: { "aria-label": label } });
@@ -277,6 +278,10 @@ class DayPeekView extends ItemView {
     c.empty();
     c.toggleClass("is-peek", !!this.peek);
     c.toggleClass("is-picker", this.peek === "months" || this.peek === "years");
+    // 0.8.1 look settings (row heights change, so the fold re-measures below)
+    const st = this.plugin.settings;
+    this.contentEl.dataset.density = DENSITIES.includes(st.density) ? st.density : "normal";
+    this.contentEl.toggleClass("no-today-ring", !st.todayRing);
     this.rowEls = null;
 
     if (this.peek === "months") {
@@ -586,6 +591,7 @@ module.exports = class DayPeekPlugin extends Plugin {
     this.registerDomEvent(window, "resize", () => this.applyWidth());
     // Make sure the pane exists after Obsidian starts (phones lose sidebar tabs easily).
     this.app.workspace.onLayoutReady(async () => { await this.autoOpen(); this.watchDrawers(); this.updateStatusBar(); this.applyWidth(); });
+    this.applyPicker();
   }
 
   onunload() {
@@ -593,6 +599,7 @@ module.exports = class DayPeekPlugin extends Plugin {
     if (this.drawerObserver) this.drawerObserver.disconnect();
     this.hub.leave("day-peek");   // shows the bar again unless Fold Magic still wants it hidden
     this.clearWidth();
+    document.body.removeClass("day-peek-hide-picker");
   }
 
   // ---- Android status bar (0.6.0; shared keeper since 0.7.0) ----
@@ -749,6 +756,9 @@ module.exports = class DayPeekPlugin extends Plugin {
     for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE)) leaf.view?.renderGrid?.();
   }
 
+  // 0.8.1: hide the sidebar's tab picker ("Day Peek ▾") and a tab's title bar, only where Day Peek is showing (CSS :has)
+  applyPicker() { document.body.toggleClass("day-peek-hide-picker", !!this.settings.hidePicker); }
+
   redraw() { for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE)) leaf.view?.renderGrid?.(); }
 
   async open(where, quiet = false) {
@@ -824,6 +834,25 @@ class DayPeekSettings extends PluginSettingTab {
           this.plugin.settings[key] = v; await this.plugin.saveSettings(); this.plugin.applyWidth();
         });
       });
+    new Setting(el)
+      .setName("Calendar density")
+      .setDesc("Smaller rows and header = more room for the note. The densest setting is small on purpose.")
+      .addDropdown((d) => d
+        .addOptions({ normal: "Normal", compact: "Compact", dense: "Dense", densest: "Densest" })
+        .setValue(this.plugin.settings.density)
+        .onChange(async (v) => { this.plugin.settings.density = v; await this.plugin.saveSettings(); this.plugin.redraw(); }));
+    new Setting(el)
+      .setName("Circle today")
+      .setDesc("Draw a ring around today's date in the calendar.")
+      .addToggle((t) => t
+        .setValue(this.plugin.settings.todayRing)
+        .onChange(async (v) => { this.plugin.settings.todayRing = v; await this.plugin.saveSettings(); this.plugin.redraw(); }));
+    new Setting(el)
+      .setName("Hide the tab picker")
+      .setDesc("Hides the sidebar's \"Day Peek ▾\" bar (and the title bar when Day Peek is a tab) while Day Peek is showing, for more height. To switch the sidebar to another tab meanwhile, turn this off.")
+      .addToggle((t) => t
+        .setValue(this.plugin.settings.hidePicker)
+        .onChange(async (v) => { this.plugin.settings.hidePicker = v; await this.plugin.saveSettings(); this.plugin.applyPicker(); }));
     widthSetting("sidebarWidth", "Sidebar width", "84vw", "width");
     widthSetting("sidebarMaxWidth", "Sidebar maximum width", "450px", "max-width");
     new Setting(el)

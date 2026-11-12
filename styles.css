@@ -1,32 +1,37 @@
 /* Day Peek 0.8.0: header + fold-on-scroll calendar */
 .day-peek { display: flex; flex-direction: column; padding: 0 !important; overflow: hidden; container-type: inline-size;
-  --dp-accent: var(--text-accent); --dp-sep: var(--background-modifier-border); }
+  --dp-accent: var(--text-accent); --dp-sep: var(--background-modifier-border);
+  --dp-hs: 1; --dp-ns: 1; --dp-pt: 9px; --dp-pb: 11px; --dp-dowp: 6px 0 4px; --dp-headp: 4px; }
+/* 0.8.1 density: header scale, number scale, cell padding, weekday padding */
+.day-peek[data-density="compact"] { --dp-hs: .82; --dp-ns: .88; --dp-pt: 5px; --dp-pb: 7px; --dp-dowp: 4px 0 2px; --dp-headp: 2px; }
+.day-peek[data-density="dense"]   { --dp-hs: .68; --dp-ns: .76; --dp-pt: 2px; --dp-pb: 5px; --dp-dowp: 2px 0 1px; --dp-headp: 1px; }
+.day-peek[data-density="densest"] { --dp-hs: .56; --dp-ns: .66; --dp-pt: 1px; --dp-pb: 5px; --dp-dowp: 1px 0 0; --dp-headp: 0px; }
 .day-peek button { box-shadow: none; background: transparent !important; border: none; color: inherit; cursor: pointer;
   height: auto; min-width: 0; padding: 0; margin: 0; }
 
 /* ---- header: ▲▼ | Nov | '26 | ‹ 9 › | TODAY ---- */
 .day-peek-head { position: relative; z-index: 3; display: flex; align-items: stretch; gap: 0; flex: none;
-  padding: 4px 4px; background: var(--background-primary); border-bottom: 1px solid var(--dp-sep); line-height: 1; }
+  padding: var(--dp-headp) 4px; background: var(--background-primary); border-bottom: 1px solid var(--dp-sep); line-height: 1; }
 .day-peek-head > * { display: flex; align-items: center; justify-content: center; }
 .dp-sep { width: 1px; flex: none; align-self: stretch; margin: 6px 0; background: var(--dp-sep); }
 .dp-cycle { flex-direction: column; gap: 3px; padding: 0 clamp(4px, 2cqi, 10px); }
 .dp-tri { display: flex; padding: 2px 0 !important; }
-.dp-tri svg { width: clamp(18px, 7cqi, 30px); height: auto; display: block; }
+.dp-tri svg { width: calc(clamp(18px, 7cqi, 30px) * var(--dp-hs)); height: auto; display: block; }
 .dp-tri path { fill: none; stroke: var(--text-normal); stroke-width: 1.6; stroke-linejoin: round; }
 .dp-tri:hover path { stroke: var(--dp-accent); }
-.dp-month { flex: 1.2; font-size: clamp(22px, 10cqi, 44px); font-weight: 300; letter-spacing: 0.01em; padding: 2px 4px !important; }
-.day-peek .dp-year { flex: 1; font-size: clamp(20px, 9cqi, 40px); font-weight: 800; letter-spacing: -0.02em; padding: 2px 4px !important;
+.dp-month { flex: 1.2; font-size: calc(clamp(22px, 10cqi, 44px) * var(--dp-hs)); font-weight: 300; letter-spacing: 0.01em; padding: 2px 4px !important; }
+.day-peek .dp-year { flex: 1; font-size: calc(clamp(20px, 9cqi, 40px) * var(--dp-hs)); font-weight: 800; letter-spacing: -0.02em; padding: 2px 4px !important;
   color: var(--dp-accent); }
 @supports ((background-clip: text) or (-webkit-background-clip: text)) {
   .day-peek .dp-year { background-color: transparent !important; background-image: linear-gradient(180deg, var(--text-normal) 30%, var(--dp-accent)) !important;
     -webkit-background-clip: text !important; background-clip: text !important; -webkit-text-fill-color: transparent; }
 }
 .dp-daybox { flex: 1.1; gap: 0; }
-.dp-step { font-size: clamp(22px, 9cqi, 38px); font-weight: 600; color: var(--text-muted) !important; padding: 2px clamp(2px, 1.5cqi, 8px) !important; }
+.dp-step { font-size: calc(clamp(22px, 9cqi, 38px) * var(--dp-hs)); font-weight: 600; color: var(--text-muted) !important; padding: 2px clamp(2px, 1.5cqi, 8px) !important; }
 .dp-step:hover { color: var(--text-normal) !important; }
-.dp-day { font-size: clamp(20px, 8.5cqi, 36px); font-weight: 600; color: var(--dp-accent) !important; min-width: 1.3em !important; padding: 2px 0 !important; }
+.dp-day { font-size: calc(clamp(20px, 8.5cqi, 36px) * var(--dp-hs)); font-weight: 600; color: var(--dp-accent) !important; min-width: 1.3em !important; padding: 2px 0 !important; }
 .dp-day.is-elsewhere { opacity: .5; }
-.dp-today { flex-direction: column; gap: 2px; padding: 0 clamp(4px, 2cqi, 10px) !important; font-size: clamp(10px, 3.6cqi, 15px);
+.dp-today { flex-direction: column; gap: 2px; padding: 0 clamp(4px, 2cqi, 10px) !important; font-size: calc(clamp(10px, 3.6cqi, 15px) * max(var(--dp-hs), .75));
   font-weight: 800; text-transform: uppercase; letter-spacing: 0.02em; color: var(--text-normal); }
 .dp-today.is-active { color: var(--text-faint) !important; }
 .dp-month.is-open, .dp-year.is-open, .dp-day.is-open { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }
@@ -46,16 +51,16 @@
   background: var(--background-primary); will-change: transform; }
 .dp-dow { z-index: 60; }
 .dp-week.is-gone { visibility: hidden; }
-.day-peek-dow { text-align: center; font-size: clamp(11px, 3.8cqi, 16px); font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase;
-  color: var(--text-normal); padding: 6px 0 4px; }
+.day-peek-dow { text-align: center; font-size: calc(clamp(11px, 3.8cqi, 16px) * max(var(--dp-ns), .8)); font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--text-normal); padding: var(--dp-dowp); }
 .day-peek-day { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  min-width: 0 !important; padding: 9px 0 11px !important; font-size: clamp(16px, 6cqi, 24px); font-weight: 500;
+  min-width: 0 !important; padding: var(--dp-pt) 0 var(--dp-pb) !important; font-size: calc(clamp(16px, 6cqi, 24px) * var(--dp-ns)); font-weight: 500;
   color: var(--text-normal); line-height: 1; border-radius: var(--radius-s); }
 .day-peek-day:hover { background: var(--background-modifier-hover) !important; }
 .day-peek-day.is-other-month { color: var(--text-faint); }
 .day-peek-day.is-selected { color: var(--dp-accent); font-weight: 700; }
 .day-peek-day.is-today > span { box-shadow: 0 0 0 1.5px var(--text-muted); border-radius: 999px; padding: 3px 4px; margin: -3px -4px; }
-.day-peek-dot { position: absolute; left: 50%; bottom: 3px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: currentColor; opacity: .7; }
+.day-peek-dot { position: absolute; left: 50%; bottom: max(1px, calc(var(--dp-pb) - 7px)); width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: currentColor; opacity: .7; }
 
 /* month / year pickers (4 × 3) */
 .dp-picker { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; padding: 6px 6px 8px; }
@@ -83,4 +88,13 @@
 
 /* phones: Obsidian's mobile theme gives every button a tall min-height, undo that here */
 .is-mobile .day-peek button { min-height: 0 !important; }
-.is-mobile .day-peek-head { padding: 2px 2px; }
+.is-mobile .day-peek-head { padding: var(--dp-headp) 2px; }
+
+.day-peek[data-density="dense"] .day-peek-dot, .day-peek[data-density="densest"] .day-peek-dot { width: 3px; height: 3px; margin-left: -1.5px; bottom: 1px; }
+
+/* 0.8.1: today's circle can be turned off */
+.day-peek.no-today-ring .day-peek-day.is-today > span { box-shadow: none; }
+
+/* 0.8.1: hide the sidebar tab picker ("Day Peek ▾") / a tab's title bar while Day Peek is the one showing */
+body.day-peek-hide-picker .workspace-drawer-active-tab-container:has(> .workspace-drawer-active-tab-content .day-peek) > .workspace-drawer-tab-options { display: none; }
+body.day-peek-hide-picker .workspace-leaf-content[data-type="day-peek"] > .view-header { display: none; }
