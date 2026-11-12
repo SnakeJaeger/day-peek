@@ -64,7 +64,7 @@ async function createNote(app, m) {
 
 // ---------- the view ----------
 // 0.8.0 layout:
-//   header:  [▲▼ cycle month] | Nov | '26 | ‹ 9 › | GO TO TODAY
+//   header:  [▲▼ cycle month] | Nov | '26 | ‹ 9 › | TODAY
 //   below:   the calendar, drawn over the top of the note's scroll area. Scrolling the note
 //            folds it away in steps (rows → the selected week → its numbers slide under the
 //            weekday names → the names slide under the header); scrolling back unfolds it.
@@ -118,8 +118,7 @@ class DayPeekView extends ItemView {
     const next = dayBox.createEl("button", { cls: "dp-step", text: "›", attr: { "aria-label": "Next day" } });
     head.createDiv("dp-sep");
     this.todayBtn = head.createEl("button", { cls: "dp-today", attr: { "aria-label": "Go to today" } });
-    this.todayBtn.createSpan({ text: "Go to" });
-    this.todayBtn.createSpan({ text: "today" });
+    this.todayBtn.createSpan({ text: "Today" });
 
     this.monthBtn.onclick = () => this.togglePeek("months");
     this.yearBtn.onclick = () => this.togglePeek("years");
@@ -836,7 +835,7 @@ class DayPeekSettings extends PluginSettingTab {
         .onChange(async (v) => { this.plugin.settings.openOnStartup = v; await this.plugin.saveSettings(); }));
     el.createEl("p", {
       cls: "setting-item-description",
-      text: "Uses your core Daily notes settings (folder, date format, template). Header: ▲▼ show the previous/next month, tap the month or year to pick one, ‹ › move a day, tap the day number to show or hide the month, Go to today jumps back. None of them closes the phone keyboard.",
+      text: "Uses your core Daily notes settings (folder, date format, template). Header: ▲▼ show the previous/next month, tap the month or year to pick one, ‹ › move a day, tap the day number to show or hide the month, Today jumps back. None of them closes the phone keyboard.",
     });
   }
 }
