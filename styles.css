@@ -42,6 +42,9 @@
 .day-peek-body { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; }
 .day-peek-spacer { flex: none; }
 .day-peek-note { min-height: 100%; padding: 4px 8px 24px; box-sizing: border-box; }
+/* phones: the keyboard covers the bottom of the app (Obsidian's own notes pad for it the same way),
+   so leave room under the note to scroll its last lines up above the keyboard */
+.is-mobile .day-peek-note { padding-bottom: calc(24px + var(--keyboard-height, 0px)); }
 .day-peek-cal { position: absolute; top: 0; left: 0; right: 0; z-index: 2; overflow: hidden; background: var(--background-primary);
   border-bottom: 1px solid var(--dp-sep); }
 .day-peek-cal.is-empty { border-bottom: none; }
