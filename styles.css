@@ -98,3 +98,5 @@
 /* 0.8.1: hide the sidebar tab picker ("Day Peek ▾") / a tab's title bar while Day Peek is the one showing */
 body.day-peek-hide-picker .workspace-drawer-active-tab-container:has(> .workspace-drawer-active-tab-content .day-peek) > .workspace-drawer-tab-options { display: none; }
 body.day-peek-hide-picker .workspace-leaf-content[data-type="day-peek"] > .view-header { display: none; }
+/* 0.8.2: desktop — when Day Peek is alone in its tab group, also drop that group's tab bar so the calendar sits at the very top */
+body.day-peek-hide-picker:not(.is-mobile) .workspace-tabs:has(> .workspace-tab-header-container .workspace-tab-header[data-type="day-peek"]):not(:has(> .workspace-tab-header-container .workspace-tab-header:not([data-type="day-peek"]))) > .workspace-tab-header-container { display: none; }
