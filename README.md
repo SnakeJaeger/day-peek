@@ -25,6 +25,20 @@ Day Peek in the right sidebar on a Galaxy Z Fold 7 (unfolded; these show 0.7, be
 |---|---|
 | ![Calendar hidden](https://raw.githubusercontent.com/SnakeJaeger/day-peek/main/screenshots/4-calendar-hidden.jpg) | ![Settings](https://raw.githubusercontent.com/SnakeJaeger/day-peek/main/screenshots/5-settings.jpg) |
 
+The 0.8 header on desktop: ▲▼ page the month, tap the month or year to pick one, ‹ › step a day, Today jumps back. Scroll the note and the calendar folds away a row at a time.
+
+| Month view | Month view (taller pane) |
+|---|---|
+| ![Month view](https://raw.githubusercontent.com/SnakeJaeger/day-peek/main/screenshots/6-month-view.jpg) | ![Month view in a taller pane](https://raw.githubusercontent.com/SnakeJaeger/day-peek/main/screenshots/7-month-view-tall.jpg) |
+
+| Folding as you scroll | Folded away |
+|---|---|
+| ![Calendar folding as the note scrolls](https://raw.githubusercontent.com/SnakeJaeger/day-peek/main/screenshots/8-folding.jpg) | ![Calendar folded away](https://raw.githubusercontent.com/SnakeJaeger/day-peek/main/screenshots/9-folded.jpg) |
+
+| Month picker | Year picker |
+|---|---|
+| ![Month picker](https://raw.githubusercontent.com/SnakeJaeger/day-peek/main/screenshots/10-month-picker.jpg) | ![Year picker](https://raw.githubusercontent.com/SnakeJaeger/day-peek/main/screenshots/11-year-picker.jpg) |
+
 ## Install
 
 **With BRAT:** add the beta plugin `SnakeJaeger/day-peek`.
