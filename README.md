@@ -2,8 +2,9 @@
 
 An Obsidian plugin: a mini calendar with the selected day's **daily note right below it, editable in place**.
 
-- Month view, one-week strip, or hidden (just a `‹ date › Today` header)
-- ‹ › page a month, a week, or a day, depending on what's showing
+- Header: `▲▼ | Nov | '26 | ‹ 9 › | GO TO TODAY`. ▲▼ show the previous/next month, tap the month or the year for a 4 × 3 picker, ‹ › move a day, tap the day number for the whole month, Go to today jumps back
+- **Folds as you scroll the note** (0.8.0): the other weeks slide away and your week stays, then its numbers slide under the weekday names, then the names slide under the header. Scroll back up and it unfolds. Or pick *Cascade*: the bottom week tucks under the one above it, then the next, and so on
+- None of the header or calendar taps closes the phone keyboard
 - Dots on days that have a daily note; "Create it" uses your daily-note template
 - Edit the note without opening it; edits are saved immediately when you switch days or leave the app
 - Follows changes from sync (Syncthing, Obsidian Sync…) live, and rolls over to the new day at midnight
@@ -14,7 +15,7 @@ Uses the core **Daily notes** plugin's settings (folder, date format, template).
 
 ## Screenshots
 
-Day Peek in the right sidebar on a Galaxy Z Fold 7 (unfolded):
+Day Peek in the right sidebar on a Galaxy Z Fold 7 (unfolded; these show 0.7, before the 0.8.0 header):
 
 | Month view | Week strip | Editing with the keyboard up |
 |---|---|---|
@@ -35,7 +36,8 @@ Day Peek in the right sidebar on a Galaxy Z Fold 7 (unfolded):
 | Setting | Options |
 |---|---|
 | Where it opens | Auto (below the Calendar plugin on desktop, a tab on mobile), right sidebar, tab |
-| Calendar under the header | Month, one-week strip, hidden |
+| Calendar at rest | Month, one week, hidden (how much shows with the note scrolled to the top) |
+| Fold on scroll | Slide, cascade, off |
 | Hide the calendar while typing | Phones/tablets only, always, never |
 | Open at startup | Phones/tablets only, always, never |
 | Hide Android's status bar | On / off (Android app only: hides the system clock/battery bar while Day Peek is on screen, e.g. its sidebar is open) |
